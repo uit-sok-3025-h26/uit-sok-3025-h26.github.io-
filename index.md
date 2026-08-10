@@ -23,8 +23,7 @@ See full description [here](https://fr.uit.no/utdanning/aktivt/emne/SOK-3025){:t
 
 - [Dejene, G.K.](https://uit.no/ansatte/dejene.g.kidane){:target="blank"} 
 - [Øystein Myrland](https://uit.no/ansatte/oystein.myrland){:target="blank"} 
-- [Sverre Braathen Thyholdt](https://uit.no/ansatte/person?p_document_id=50553){:target="blank"}
-- [Jinghua Xie](https://www.uis.no/nb/profile/jinghua-xie){:target="blank"} 
+
 ## Curriculum
 
 Text book: [Buy the textbook: Principles of Econometrics, 5th Edition (POE5), Wiley - 2018. Available at the campus bookstore Akademika](https://principlesofeconometrics.com/poe5/poe5.html){:target="blank"}
