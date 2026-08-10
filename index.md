@@ -7,7 +7,7 @@ The lecture and seminar plan contains information about the timing, topics, cour
 - [Lecture and Seminar Plan](courseplan.md){:target="blank"}
 
 ## Schedule 
-A link to [Timeplan](https://tp.educloud.no/uit/app/schedule?semester=26h&scheduleType=course&filterOpen=true&summary=true&pastWeeks=false&tab=calendar&course=BED-3119%C2%A41&subjectArea=186341300){:target="blank"} at timeplan.uit.no
+A link to [Timeplan](https://tp.educloud.no/uit/app/schedule?semester=26h&scheduleType=course&filterOpen=true&summary=true&pastWeeks=false&tab=calendar&course=SOK-3025%C2%A41&subjectArea=186341300){:target="blank"} at timeplan.uit.no
 
 ## Course description
 
