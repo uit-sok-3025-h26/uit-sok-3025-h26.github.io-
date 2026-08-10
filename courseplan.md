@@ -1,6 +1,6 @@
 {% include navbar_open.html %}
 
-# courseplan SOK-3025 - Markedsanalyse 
+# courseplan SOK-3025 - Econometric Analysis: Choice, Causality & Panels 
 
 | Session <img width=80/>  | Date  |To do/done before/after class... <img width=200/>  |
 |-----------------------|---------|-----------------------------------| 
