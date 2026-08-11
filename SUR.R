@@ -1,11 +1,11 @@
 
+# Seemingly Unrelated Regression (SUR)
 
-# SUR Estimation
 
 rm(list=ls())
 require(systemfit) || {install.packages("systemfit");require(systemfit)}
 
-# Example, eq. 11.2.30
+# Example, eq. 11.2.30  (on page 453)
 
 table.11.1 <- tibble::tribble(
   ~y1,   ~x12,  ~x13,      ~y2,   ~x22,  ~x23,
@@ -43,15 +43,19 @@ fit1 ; fit2
 
 # Testing for Contemporaneous Correlation
 x <- matrix(resid(fit1),resid(fit2), nrow=length(table.11.1$y1), ncol = 2)
+
 cor(x)
+cov(x)
 
 # H0: s12 = 0, H1: s12 != 0
+
 # LM-test, equation 11.2.34 
-length(table.11.1$y1)*cor(x)[1,2]^2 > qchisq(0.95, df=1, ncp = 0, lower.tail = TRUE, log.p = FALSE)
+lambda <- length(table.11.1$y1)*cor(x)[1,2]^2
 
-?qchisq
-
-# Accept H0, we donot have cont. corr. Hence, we can estimate using OLS or SUR
+# compare 
+lambda > qchisq(0.95, df=1, ncp = 0, lower.tail = TRUE, log.p = FALSE)
+# Accept H0 (we do not have cont. corr. Hence, we can simply estimate
+# using OLS)
 
 #' Estimated as a system
 eq1 <- y1~x12+x13
@@ -59,24 +63,30 @@ eq2 <- y2~x22+x23
 
 eqSystem <- list(eq1 = eq1, eq2 = eq2)
 
+#??systemfit
+
+#browseURL("https://www.jstatsoft.org/article/view/v023i04") 
+
+
 # Estimated equation by equation OLS
 fitols <- systemfit(eqSystem, method = "OLS", data = table.11.1)
 print(fitols)
-coef(summary(fitols))
+summary(fitols)
 
-# Estimated equation by equation SUR
+# Estimated equation by SUR
 fitsur <- systemfit(eqSystem, method = "SUR", data = table.11.1)
-print(fitsur)
-coef(summary(fitsur))
 summary(fitsur)
 
+# difference b/n estimates using OLS and SUR
 round(coef(fitols)-coef(fitsur),4)
 
-# ------------------------------------------------------------
 
-# A further example
+##################################################################################
+##################################################################################
+
+# A further example (on page 460)
 rm(list=ls())
-
+require(systemfit) || {install.packages("systemfit");require(systemfit)}
 table.11.3 <- tibble::tribble(
   ~p1,    ~p2,    ~p3,      ~y,    ~q1,    ~q2,     ~q3,
   10.763,  4.474,  6.629, 487.648, 11.632, 13.194,   45.77,
@@ -130,7 +140,10 @@ cor(x)[3,2]^2
 # H0: s12 = s13 = s23 = 0
 # LM-test, equation 11.2.34 
 
-30*(cor(x)[2,1]^2+cor(x)[3,1]^2+cor(x)[3,2]^2) > qchisq(0.95, df=3, ncp = 0, lower.tail = TRUE, log.p = FALSE)
+lambda <- length(table.11.3$p1)*(cor(x)[2,1]^2+cor(x)[3,1]^2+cor(x)[3,2]^2) 
+
+#compare 
+lambda > qchisq(0.95, df=3, ncp = 0, lower.tail = TRUE, log.p = FALSE)
 # Reject H0, we have cont. corr
 
 #' Estimated as a system
@@ -141,58 +154,56 @@ eq3 <- log(q3)~log(p3)+log(y)
 eqSystem <- list(eq1 = eq1, eq2 = eq2, eq3=eq3)
 
 fitols <- systemfit(eqSystem, method = "OLS", data = table.11.3)
-print(fitols)
-coef(summary(fitols))
+summary(fitols)
 
 fitsur <- systemfit(eqSystem, method = "SUR", data = table.11.3)
-print(fitsur)
-coef(summary(fitsur))
 summary(fitsur)
 
+# difference b/n estimates using OLS and SUR
+round(coef(fitols)-coef(fitsur),4)
+
+
+#' In demand analysis, it is common to estimate the coefficients 
+#' under linear restrictions (e.g., homogeneity,  symmetry, etc.)
+#'that are derived from the underlying theoretical model.
+
 #' Create restriction matrix to impose restrictions;
-#' b11 = b22 = b33, or b11 - b22 = 0 & b11 - b33 = 0
+#' b11 = b22 = b33, or
+#' b11 - b22 = 0  & 
+#' b11 - b33 = 0
 #' same price effect in all 3 equations
 
-?systemfit
 
-#' Create a a zero matrix R of size, (# of restrictions) X (# of parameters in the model) = 2X9 matrix
-R1 <- matrix(0, nrow = 2, ncol = 9)
-R1[1, 2] <- 1
-R1[1, 5] <- -1
-R1[2, 2] <- 1
-R1[2, 8] <- -1
-R1
-
-
-# Constrained SUR estimation
-fitsur.r <- systemfit(eqSystem, "SUR", data = table.11.3, restrict.matrix = R1 )
-summary(fitsur.r)
+# Restrictions in symbolic form,
+joint.hyp <- c("eq1_log(p1) - eq2_log(p2) = 0",
+               "eq1_log(p1) - eq3_log(p3) = 0")
 
 # Constrained OLS estimation
-fitsur.r.ols <- systemfit(eqSystem, "OLS", data = table.11.3, restrict.matrix = R1 )
-fitsur.r.ols
+fitsur.r.ols <- systemfit(eqSystem, "OLS", data = table.11.3, restrict.matrix = joint.hyp )
+summary(fitsur.r.ols)
 
-#' perform LR-test (The likelihood-ratio statistic) 
 
-?lrtest.systemfit
+fitsur.r <- systemfit(eqSystem, "SUR", data = table.11.3, restrict.matrix = joint.hyp )
+summary(fitsur.r)
 
+# Are the estimated coeff. the same? Check 
+coef(fitsur.r)-coef(fitsur.r.ols) # 
+
+
+# Q Which model (the restricted or unrestricted) best fit the data?
+
+#' Perform LR-test (likelihood-ratio statistic) 
+#?lrtest.systemfit
 lrtest(fitsur.r, fitsur) # Keep H0
-qchisq(0.95, df=2, ncp = 0, lower.tail = TRUE, log.p = FALSE)
 
-# the same hypothesis in symbolic form,
-# but tested on the unrestricted model
-joint.hyp <- c("eq1_log(p1) - eq2_log(p2) = 0", "eq1_log(p1) - eq3_log(p3) = 0")
 
 ## perform Theil's F test
-linearHypothesis(fitsur, R1) 
 linearHypothesis(fitsur, joint.hyp)
 
 ## perform Wald test with F statistic
-linearHypothesis(fitsur, R1, test = "F" ) 
-linearHypothesis(fitsur, joint.hyp )
+linearHypothesis(fitsur, joint.hyp,test = "F" )
 
 ## perform Wald-test with chi^2 statistic
-linearHypothesis(fitsur, R1, test = "Chisq" ) 
 linearHypothesis(fitsur, joint.hyp, test = "Chisq" )
 
 # ------------------------------------------------------------
@@ -206,33 +217,17 @@ eq3 <- log(q3)~log(p1)+log(p2)+log(p3)+log(y)
 eqSystem <- list(eq1 = eq1, eq2 = eq2, eq3=eq3)
 
 fitsur <- systemfit(eqSystem, method = "SUR", data = table.11.3)
-print(fitsur)
-coef(summary(fitsur))
 summary(fitsur)
 
 #' Create restriction matrix to impose symmetry restrictions;
 #' b12 = b21 ; b13 = b31 ; b23 = b32
-R2 <- matrix(0, nrow = 3, ncol = 15)
-R2
-R2[1, 3] <- 1
-R2[1, 7] <- -1
-R2[2, 4] <- 1
-R2[2, 12] <- -1
-R2[3, 9] <- 1
-R2[3, 13] <- -1
-R2
+
+R2 <- c("eq1_log(p2) - eq2_log(p1)=0",
+        "eq1_log(p3) - eq3_log(p1)=0",
+        "eq2_log(p3) - eq3_log(p2)=0")
 
 fitsur.symmetry <- systemfit(eqSystem, method="SUR", data = table.11.3, restrict.matrix = R2)
 summary(fitsur.symmetry)
-
-R2.alt <- c("eq1_log(p2) - eq2_log(p1)=0",
-            "eq1_log(p3) - eq3_log(p1)=0",
-            "eq2_log(p3) - eq3_log(p2)=0")
-
-fitsur.symmetry.alt <- systemfit(eqSystem, method="SUR", data = table.11.3, restrict.matrix = R2.alt)
-summary(fitsur.symmetry.alt)
-
-coef(fitsur.symmetry)-coef(fitsur.symmetry.alt)
 
 # Homogeneity
 R3 <- c("eq1_log(p1) + eq1_log(p2) + eq1_log(p3)=0",
@@ -242,15 +237,375 @@ R3 <- c("eq1_log(p1) + eq1_log(p2) + eq1_log(p3)=0",
 fitsur.homogeneity <- systemfit(eqSystem, method="SUR", data = table.11.3, restrict.matrix = R3)
 summary(fitsur.homogeneity)
 
+
+# symmetery 
+# RS <- ("eq1_log(p2) - eq2_log(p1)=0",
+#         "eq1_log(p3) - eq3_log(p1)=0",
+#         "eq2_log(p3) - eq3_log(p2)=0")
+
+
 # Homogeneity & Symmetry
 R4 <- c("eq1_log(p1) + eq1_log(p2) + eq1_log(p3)=0",
         "eq2_log(p1) + eq2_log(p2) + eq2_log(p3)=0",
         "eq3_log(p1) + eq3_log(p2) + eq3_log(p3)=0",
+        
         "eq1_log(p2) - eq2_log(p1)=0",
         "eq1_log(p3) - eq3_log(p1)=0",
         "eq2_log(p3) - eq3_log(p2)=0")
 
 fitsur.homogeneity.symmetry <- systemfit(eqSystem, method="SUR", data = table.11.3, restrict.matrix = R4)
 summary(fitsur.homogeneity.symmetry)
+
+lrtest(fitsur, fitsur.homogeneity.symmetry) 
+
+
+
+# more example 
+#browseURL("https://www.jstatsoft.org/article/view/v023i04") 
+
+# consump = b1+b2.price + b3.income + u1
+# consump = b4+b5.price + b6.farmPrice + b7.trend + u2
+
+rm(list = ls())
+library(systemfit)
+library(tidyverse)
+
+data( "Kmenta" )
+
+head(Kmenta)
+
+
+#library(mosaic)
+# Kmenta <- Kmenta %>% mutate(consump = Q, price = P, income = D, farmPrice = F, trend = A)
+
+eqDemand <- consump ~ price + income
+eqSupply <- consump ~ price + farmPrice + trend
+
+system <- list( demand = eqDemand, supply = eqSupply )
+
+# These equations can be estimated using OLS
+fit_ols <- systemfit(system, method = "OLS", data=Kmenta)
+summary(fit_ols)
+
+
+## Using SUR estimation
+fitsur <- systemfit( system, "SUR", data = Kmenta )
+summary(fitsur)
+
+# Are the estimated coeff. the same? Check 
+coef(fitsur)-coef(fit_ols) 
+
+# using 2SLS/3SLS estimation
+#fitsur2sls <- systemfit( system, "2SLS", data = Kmenta )
+
+# need instrument 
+fitsur2sls <- systemfit(system, "2SLS", inst = ~income+farmPrice+trend, data = Kmenta )
+summary(fitsur2sls)
+
+# using 3SLS estimation
+fitsur3sls <- systemfit(system, "3SLS", inst = ~income+farmPrice+trend, data = Kmenta )
+summary(fitsur3sls)
+
+
+
+# Restrition on the coefficients
+# Impose:  beta_2 = beta_6, 
+#ie, coeffs of price in the first eqn, and farmprice in the seond eq
+
+#Restrictions in symbolic form
+joint.hyp <- c("demand_price - supply_farmPrice = 0")
+fitsur.r <- systemfit( system, "SUR", data = Kmenta, restrict.matrix = joint.hyp )
+summary(fitsur.r)
+
+#Alternatively, we can use a restriction matrix
+R1 <- matrix( 0, nrow = 1, ncol = 7 )
+R1[ 1, 2 ] <- 1
+R1[ 1, 6 ] <- -1
+
+R1
+
+## constrained SUR estimation
+fitsur1 <- systemfit( system, "SUR", data = Kmenta, restrict.matrix = R1 )
+summary(fitsur1)
+
+
+## perform LR-test
+lrTest1 <- lrtest(fitsur.r, fitsur )
+print( lrTest1 )   # rejected
+
+# Change the restriction
+# matrix to impose beta_2 = - beta_6 <---note the -ve sign before beta_6
+R2 <- joint.hyp <- c("demand_price +supply_farmPrice = 0")
+
+## constrained SUR estimation
+fitsur2 <- systemfit( system, "SUR", data = Kmenta, restrict.matrix = R2 )
+summary(fitsur2)
+
+## perform LR-test
+lrTest2 <- lrtest(fitsur2, fitsur )
+print( lrTest2 )   # accepted
+
+
+
+#############################################################
+##############################################################
+
+
+rm(list=ls())
+library(systemfit) 
+library(dplyr) 
+library(car) 
+
+# Import the data
+library(readr)
+mydata <- read_table("https://raw.githubusercontent.com/uit-sok-3025-h25/uit-sok-3025-h25.github.io/refs/heads/main/sok-3025.txt")
+
+
+#View(mydata)
+head(mydata )
+
+#View(mydata)
+
+#Quick investigation of the data with summary and plots QCod, etc
+summary(mydata$QCod);
+summary(mydata$QHaddock);
+summary(mydata$QAlaska)
+
+plot(mydata$QCod, type='l')
+plot(mydata$QHaddock, type='l')
+plot(mydata$QAlaska, type='l')
+
+
+#We'll now define the variables. 
+#' Use 1=cod, 
+#' 2=haddock, 
+#' 3=Alaska such that given pi, then p1 is the price of cod,
+
+#calculate prices, "pi", and add it to the data.frame
+mydata <- mydata %>% 
+  mutate(p1 = XCod/QCod,
+         p2 = XHaddock/QHaddock,
+         p3 = XAlaska/QAlaska,
+         EXP = XCod + XHaddock+XAlaska) %>% 
+  rename(q1 = QCod, q2 = QHaddock, q3 = QAlaska, y=EXP) %>% 
+  select(Trend, Year, Month, p1,p2,p3, q1,q2,q3,y )
+
+# summary of the data
+summary (mydata$p1);
+summary (mydata$p2); 
+summary (mydata$p3)
+
+plot (mydata$p1,type="l",  main='price of cod')
+plot (mydata$p2,type="l", main='price of haddock')
+
+plot (mydata$p3,type="l", main ='price of Alaska')
+
+
+
+# Equation by equation OLS
+fit1 <- lm(log(q1)~log(p1)+log(p2)+log(p3)+log(y), data = mydata)
+fit2 <- lm(log(q2)~log(p1)+log(p2)+log(p3)+log(y), data =mydata)
+fit3 <- lm(log(q3)~log(p1)+log(p2)+log(p3)+log(y), data = mydata)
+
+# Eq. 11.2.31
+fit1 ; fit2 ; fit3
+
+# Testing for Contemporaneous Correlation
+x <- matrix(c(resid(fit1),resid(fit2), resid(fit3)), nrow=length(mydata$p1), ncol = 3) 
+cor(x)
+
+cor(x)[2,1]^2
+cor(x)[3,1]^2
+cor(x)[3,2]^2
+
+# H0: s12 = s13 = s23 = 0
+# LM-test, equation 11.2.34 
+
+lambda <- length(mydata$p1)*(cor(x)[2,1]^2+cor(x)[3,1]^2+cor(x)[3,2]^2) 
+
+#compare 
+lambda > qchisq(0.95, df=3, ncp = 0, lower.tail = TRUE, log.p = FALSE)
+# Reject H0, we have cont. corr
+
+
+# Estimate the model 
+#system without monthly dummies
+eq1 <- log(q1)~log(p1)+log(p2)+log(p3)+log(y)
+eq2 <- log(q2)~log(p1)+log(p2)+log(p3)+log(y)
+eq3 <- log(q3)~log(p1)+log(p2)+log(p3)+log(y)
+
+
+#' First define the system using list() on the eqs.
+eqSystem <- list(eq1 = eq1, eq2 = eq2, eq3=eq3)
+
+fitsur <- systemfit(eqSystem, method = "SUR", data = mydata)
+summary(fitsur)
+
+
+#add monthly dummies to the data.frame (use ifelse(mydata$Month==i, 1, 0))
+#use variable name "mi", e.g. for January, we get "m1"
+
+mydata <- mydata %>% 
+  mutate( m1 =ifelse(Month==1, 1, 0),
+          m2 = ifelse(Month==2, 1, 0),
+          m3 = ifelse(Month==3, 1, 0),
+          m4 = ifelse(Month==4, 1, 0),
+          m5 = ifelse(Month==5, 1, 0),
+          m6 = ifelse(Month==6, 1, 0),
+          m7 = ifelse(Month==7, 1, 0),
+          m8 = ifelse(Month==8, 1, 0),
+          m9 = ifelse(Month==9, 1, 0),
+          m10= ifelse(Month==10, 1, 0),
+          m11= ifelse(Month==11, 1, 0),
+          m12= ifelse(Month==12, 1, 0)) 
+
+View(mydata)
+
+#system with monthly dummies
+eq1 <- log(q1)~log(p1)+log(p2)+log(p3)+log(y)+m2+m3+m4+m5+m6+m7+m8+m9+m10+m11+m12
+eq2 <- log(q2)~log(p1)+log(p2)+log(p3)+log(y)+m2+m3+m4+m5+m6+m7+m8+m9+m10+m11+m12
+eq3 <- log(q3)~log(p1)+log(p2)+log(p3)+log(y)+m2+m3+m4+m5+m6+m7+m8+m9+m10+m11+m12
+
+#' First define the system using list() on the eqs.
+eqSystem <- list(eq1 = eq1, eq2 = eq2, eq3=eq3)
+
+fitsur <- systemfit(eqSystem, method = "SUR", data = mydata)
+summary(fitsur)
+
+
+#' Check whether the monthly dummies are relevant 
+#' H0: The monthly dummies are jointly equal to zero
+
+#' Note: whether to estimated model with dummies or without dummies depends on your study
+#' and your data
+resmonth <- c("eq1_m2=0", 
+              "eq1_m3=0", 
+              "eq1_m4=0",
+              "eq1_m5=0",
+              "eq1_m6=0",
+              "eq1_m7=0",
+              "eq1_m8=0",
+              "eq1_m9=0", 
+              "eq1_m10=0",
+              "eq1_m11=0",
+              "eq1_m12=0",
+              
+              "eq2_m2=0", 
+              "eq2_m3=0",
+              "eq2_m4=0",
+              "eq2_m5=0",
+              "eq2_m6=0",
+              "eq2_m7=0",
+              "eq2_m8=0",
+              "eq2_m9=0", 
+              "eq2_m10=0",
+              "eq2_m11=0",
+              "eq2_m12=0",
+              
+              "eq3_m2=0", 
+              "eq3_m3=0", 
+              "eq3_m4=0",
+              "eq3_m5=0",
+              "eq3_m6=0",
+              "eq3_m7=0",
+              "eq3_m8=0",
+              "eq3_m9=0", 
+              "eq3_m10=0",
+              "eq3_m11=0",
+              "eq3_m12=0")     
+
+
+
+#' The wald test which computes the chi square:
+linearHypothesis (fitsur, resmonth, test="Chisq")
+
+#' Find the critical chi squared - remember to input correct DF 
+#' (33 for this one. Can be seen in the output above):
+
+qchisq(0.95,33)
+
+#' We're able to reject the null hypothesis in this case since the computed chi square 
+#' is larger than the critical chi squared, i.e. the montly dummies
+#' are jointly not equal to zero
+
+
+
+# Test homogeneity
+#' Homogeneity H0: The equations are homogeneous
+reshom <- c("eq1_log(p1) + eq1_log(p2) + eq1_log(p3)=0",
+            "eq2_log(p1) + eq2_log(p2) + eq2_log(p3)=0",
+            "eq3_log(p1) + eq3_log(p2) + eq3_log(p3)=0")
+
+
+linearHypothesis (fitsur, reshom, test="Chisq")
+qchisq(0.95,3) #critical chi-squared
+#' Not able to reject since critical > computed
+ 
+# With homogeneity
+fitsur.hom <- systemfit(eqSystem, data=mydata, method="SUR", restrict.matrix=reshom)
+summary(fitsur.hom)
+
+
+#  Test symmetry 
+# symmetry: H0: The equations are symmetric
+ressym <- c("eq1_log(p2)-eq2_log(p1)=0",
+            "eq1_log(p3)-eq3_log(p2)=0",
+            "eq2_log(p3)-eq3_log(p2)=0")
+
+linearHypothesis (fitsur, ressym, test="Chisq")
+qchisq(0.95, 3) #critical chi-squared
+#' Not able to reject since critical > computed
+
+# With symmetry
+fitsur.sym <- systemfit(eqSystem, data=mydata, method="SUR", restrict.matrix=ressym)
+summary(fitsur.sym)
+
+
+#  Test homogeneity and symmetry together
+#Homo and sym: H0: the equations are homogeneous AND symmetric:
+reshomsym <- c("eq1_log(p1) + eq1_log(p2) + eq1_log(p3)=0",
+               "eq2_log(p1) + eq2_log(p2) + eq2_log(p3)=0",
+               "eq3_log(p1) + eq3_log(p2) + eq3_log(p3)=0",
+               "eq1_log(p2)-eq2_log(p1)=0",
+               "eq1_log(p3)-eq3_log(p2)=0",
+               "eq2_log(p3)-eq3_log(p2)=0")
+
+
+linearHypothesis (fitsur, reshomsym, test="Chisq")
+
+qchisq(0.95, 6) #critical chi-squared
+#' Not able to reject since critical > computed
+
+# With both homogeneity and symmetry 
+fitsur.homsym <- systemfit(eqSystem, data=mydata, method="SUR", restrict.matrix=reshomsym)
+summary(fitsur.homsym)
+
+
+#' Collect the elasticity from fitsur.homsym  
+coef(summary(fitsur.homsym)) 
+coeff <- round(coef(summary(fitsur.homsym)), digits=3) 
+
+# Define first a vector which contains all relevant varaibles to make code easier to read:
+relCoeffs <- c("eq1_log(p1)", "eq1_log(p2)", "eq1_log(p3)","eq1_log(y)",
+               "eq2_log(p1)", "eq2_log(p2)", "eq2_log(p3)","eq2_log(y)",
+               "eq3_log(p1)", "eq3_log(p2)", "eq3_log(p3)","eq3_log(y)")
+
+coeff[relCoeffs,]
+
+coeffRelevant <- coeff[relCoeffs,]  
+
+coeffnum <- coeff[relCoeffs,1] 
+coeffnum 
+
+# Elasticites
+els <- round(coeffnum, digit=3) 
+els
+#print elasticities in a table
+elasq1 <- els[1:4]
+elasq2 <- els[5:8]
+elasq3 <- els[9:12]
+
+elsoutput <- rbind(elasq1, elasq2,elasq3)
+elsoutput
 
 
